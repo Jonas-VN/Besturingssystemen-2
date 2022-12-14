@@ -70,8 +70,6 @@ void sbuffer_destroy(sbuffer_t* buffer) {
 //     ASSERT_ELSE_PERROR(pthread_mutex_unlock(&buffer->mutex) == 0);
 // }
 
-//test
-
 bool sbuffer_is_empty(sbuffer_t* buffer) {
     // Read only
     assert(buffer);
