@@ -74,15 +74,12 @@ bool sbuffer_is_empty(sbuffer_t* buffer) {
     // Read only
     assert(buffer);
     ASSERT_ELSE_PERROR(pthread_mutex_lock(&buffer->mutex) == 0);
-    bool ret =  buffer->head == NULL;
-    ASSERT_ELSE_PERROR(pthread_mutex_unlock(&buffer->mutex) == 0);
-    return ret;
+    return buffer->head == NULL;
 }
 
 bool sbuffer_is_closed(sbuffer_t* buffer) {
     // Read only
     assert(buffer);
-    ASSERT_ELSE_PERROR(pthread_mutex_lock(&buffer->mutex) == 0);
     bool ret = buffer->closed;
     ASSERT_ELSE_PERROR(pthread_mutex_unlock(&buffer->mutex) == 0);
     return ret;
@@ -113,7 +110,6 @@ sensor_data_t sbuffer_remove_last(sbuffer_t* buffer) {
     assert(buffer);
     assert(buffer->head != NULL);
 
-    ASSERT_ELSE_PERROR(pthread_mutex_lock(&buffer->mutex) == 0);
     sbuffer_node_t* removed_node = buffer->tail;
     assert(removed_node != NULL);
     if (removed_node == buffer->head) {
