@@ -118,13 +118,15 @@ sensor_data_t sbuffer_remove_last(sbuffer_t* buffer, bool fromDatamgr) {
     assert(removed_node != NULL);
     sensor_data_t ret = removed_node->data;
 
+    // Komt van de datamgr en deze heeft het nog niet gezien -> nu wel dus
     if (fromDatamgr && !buffer->tail->seenByDatamgr) {
         buffer->tail->seenByDatamgr = true;
     } 
+    // Komt van de storagemgr en deze heeft het nog niet gezien -> nu wel dus
     else if (!fromDatamgr && !buffer->tail->seenByStoragemgr) {
         buffer->tail->seenByStoragemgr = true;
     }
-
+    // Beide hebben het gezien -> mag verwijdert worden
     if (buffer->tail->seenByDatamgr && buffer->tail->seenByStoragemgr) {
         if (removed_node == buffer->head) {
             buffer->head = NULL;
