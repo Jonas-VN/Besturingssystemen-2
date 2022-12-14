@@ -20,6 +20,8 @@
 typedef struct sbuffer_node {
     struct sbuffer_node* prev;
     sensor_data_t data;
+    bool seenByDatamgr;
+    bool seenByStoragemgr;
 } sbuffer_node_t;
 
 struct sbuffer {
@@ -95,6 +97,8 @@ int sbuffer_insert_first(sbuffer_t* buffer, sensor_data_t const* data) {
     // create new node
     sbuffer_node_t* node = create_node(data);
     assert(node->prev == NULL);
+    node->seenByDatamgr = false;
+    node->seenByStoragemgr = false;
 
     // insert it
     if (buffer->head != NULL)
@@ -106,19 +110,29 @@ int sbuffer_insert_first(sbuffer_t* buffer, sensor_data_t const* data) {
     return SBUFFER_SUCCESS;
 }
 
-sensor_data_t sbuffer_remove_last(sbuffer_t* buffer) {
+sensor_data_t sbuffer_remove_last(sbuffer_t* buffer, bool fromDatamgr) {
     assert(buffer);
     assert(buffer->head != NULL);
-
+    
     sbuffer_node_t* removed_node = buffer->tail;
     assert(removed_node != NULL);
-    if (removed_node == buffer->head) {
-        buffer->head = NULL;
-        assert(removed_node == buffer->tail);
-    }
-    buffer->tail = removed_node->prev;
     sensor_data_t ret = removed_node->data;
-    free(removed_node);
+
+    if (fromDatamgr && !buffer->tail->seenByDatamgr) {
+        buffer->tail->seenByDatamgr = true;
+    } 
+    else if (!fromDatamgr && !buffer->tail->seenByStoragemgr) {
+        buffer->tail->seenByStoragemgr = true;
+    }
+
+    if (buffer->tail->seenByDatamgr && buffer->tail->seenByStoragemgr) {
+        if (removed_node == buffer->head) {
+            buffer->head = NULL;
+            assert(removed_node == buffer->tail);
+        }
+        buffer->tail = removed_node->prev;
+        free(removed_node);
+    }
     ASSERT_ELSE_PERROR(pthread_mutex_unlock(&buffer->mutex) == 0);
     return ret;
 }

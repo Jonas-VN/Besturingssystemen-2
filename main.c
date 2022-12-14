@@ -34,7 +34,7 @@ static void* datamgr_run(void* buffer) {
     while (true) {
         // sbuffer_lock(buffer);
         if (!sbuffer_is_empty(buffer)) {
-            sensor_data_t data = sbuffer_remove_last(buffer);
+            sensor_data_t data = sbuffer_remove_last(buffer, true);
             datamgr_process_reading(&data);
             // everything nice & processed
         } else if (sbuffer_is_closed(buffer)) {
@@ -59,7 +59,7 @@ static void* storagemgr_run(void* buffer) {
     while (true) {
         // sbuffer_lock(buffer);
         if (!sbuffer_is_empty(buffer)) {
-            sensor_data_t data = sbuffer_remove_last(buffer);
+            sensor_data_t data = sbuffer_remove_last(buffer, false);
             storagemgr_insert_sensor(db, data.id, data.value, data.ts);
             // everything nice & processed
         } else if (sbuffer_is_closed(buffer)) {
