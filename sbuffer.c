@@ -60,38 +60,38 @@ void sbuffer_destroy(sbuffer_t* buffer) {
     free(buffer);
 }
 
-void sbuffer_lock(sbuffer_t* buffer) {
-    assert(buffer);
-    ASSERT_ELSE_PERROR(pthread_mutex_lock(&buffer->mutex) == 0);
-}
-
-void sbuffer_unlock(sbuffer_t* buffer) {
-    assert(buffer);
-    ASSERT_ELSE_PERROR(pthread_mutex_unlock(&buffer->mutex) == 0);
-}
+// void sbuffer_lock(sbuffer_t* buffer) {
+//     assert(buffer);
+//     ASSERT_ELSE_PERROR(pthread_mutex_lock(&buffer->mutex) == 0);
+// }
+// 
+// void sbuffer_unlock(sbuffer_t* buffer) {
+//     assert(buffer);
+//     ASSERT_ELSE_PERROR(pthread_mutex_unlock(&buffer->mutex) == 0);
+// }
 
 bool sbuffer_is_empty(sbuffer_t* buffer) {
     // Read only
     assert(buffer);
-    sbuffer_lock(buffer);
+    ASSERT_ELSE_PERROR(pthread_mutex_lock(&buffer->mutex) == 0);
     bool ret =  buffer->head == NULL;
-    sbuffer_unlock(buffer);
+    ASSERT_ELSE_PERROR(pthread_mutex_unlock(&buffer->mutex) == 0);
     return ret;
 }
 
 bool sbuffer_is_closed(sbuffer_t* buffer) {
     // Read only
     assert(buffer);
-    sbuffer_lock(buffer);
+    ASSERT_ELSE_PERROR(pthread_mutex_lock(&buffer->mutex) == 0);
     bool ret = buffer->closed;
-    sbuffer_unlock(buffer);
+    ASSERT_ELSE_PERROR(pthread_mutex_unlock(&buffer->mutex) == 0);
     return ret;
 }
 
 int sbuffer_insert_first(sbuffer_t* buffer, sensor_data_t const* data) {
-    // Write
+    // Write only
     assert(buffer && data);
-    sbuffer_lock(buffer);
+    ASSERT_ELSE_PERROR(pthread_mutex_lock(&buffer->mutex) == 0);
     if (buffer->closed)
         return SBUFFER_FAILURE;
 
@@ -105,7 +105,7 @@ int sbuffer_insert_first(sbuffer_t* buffer, sensor_data_t const* data) {
     buffer->head = node;
     if (buffer->tail == NULL)
         buffer->tail = node;
-    sbuffer_unlock(buffer);
+    ASSERT_ELSE_PERROR(pthread_mutex_unlock(&buffer->mutex) == 0);
     return SBUFFER_SUCCESS;
 }
 
@@ -113,7 +113,7 @@ sensor_data_t sbuffer_remove_last(sbuffer_t* buffer) {
     assert(buffer);
     assert(buffer->head != NULL);
 
-    sbuffer_lock(buffer);
+    ASSERT_ELSE_PERROR(pthread_mutex_lock(&buffer->mutex) == 0);
     sbuffer_node_t* removed_node = buffer->tail;
     assert(removed_node != NULL);
     if (removed_node == buffer->head) {
@@ -123,14 +123,14 @@ sensor_data_t sbuffer_remove_last(sbuffer_t* buffer) {
     buffer->tail = removed_node->prev;
     sensor_data_t ret = removed_node->data;
     free(removed_node);
-    sbuffer_unlock(buffer);
+    ASSERT_ELSE_PERROR(pthread_mutex_unlock(&buffer->mutex) == 0);
     return ret;
 }
 
 void sbuffer_close(sbuffer_t* buffer) {
     assert(buffer);
 
-    sbuffer_lock(buffer);
+    ASSERT_ELSE_PERROR(pthread_mutex_lock(&buffer->mutex) == 0);
     buffer->closed = true;
-    sbuffer_unlock(buffer);
+    ASSERT_ELSE_PERROR(pthread_mutex_unlock(&buffer->mutex) == 0);
 }
