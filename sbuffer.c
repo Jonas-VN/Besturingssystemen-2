@@ -39,6 +39,7 @@ static sbuffer_node_t* create_node(const sensor_data_t* data) {
 }
 
 sbuffer_t* sbuffer_create() {
+    // Geen synchronisatie nodig -> niemand kan er al aan
     sbuffer_t* buffer = malloc(sizeof(sbuffer_t));
     // should never fail due to optimistic memory allocation
     assert(buffer != NULL);
@@ -63,23 +64,34 @@ void sbuffer_lock(sbuffer_t* buffer) {
     assert(buffer);
     ASSERT_ELSE_PERROR(pthread_mutex_lock(&buffer->mutex) == 0);
 }
+
 void sbuffer_unlock(sbuffer_t* buffer) {
     assert(buffer);
     ASSERT_ELSE_PERROR(pthread_mutex_unlock(&buffer->mutex) == 0);
 }
 
 bool sbuffer_is_empty(sbuffer_t* buffer) {
+    // Read only
     assert(buffer);
-    return buffer->head == NULL;
+    sbuffer_lock(buffer);
+    bool ret =  buffer->head == NULL;
+    sbuffer_unlock(buffer);
+    return ret;
 }
 
 bool sbuffer_is_closed(sbuffer_t* buffer) {
+    // Read only
     assert(buffer);
-    return buffer->closed;
+    sbuffer_lock(buffer);
+    bool ret = buffer->closed;
+    sbuffer_unlock(buffer);
+    return ret;
 }
 
 int sbuffer_insert_first(sbuffer_t* buffer, sensor_data_t const* data) {
+    // Write
     assert(buffer && data);
+    sbuffer_lock(buffer);
     if (buffer->closed)
         return SBUFFER_FAILURE;
 
@@ -93,7 +105,7 @@ int sbuffer_insert_first(sbuffer_t* buffer, sensor_data_t const* data) {
     buffer->head = node;
     if (buffer->tail == NULL)
         buffer->tail = node;
-
+    sbuffer_unlock(buffer);
     return SBUFFER_SUCCESS;
 }
 
@@ -101,6 +113,7 @@ sensor_data_t sbuffer_remove_last(sbuffer_t* buffer) {
     assert(buffer);
     assert(buffer->head != NULL);
 
+    sbuffer_lock(buffer);
     sbuffer_node_t* removed_node = buffer->tail;
     assert(removed_node != NULL);
     if (removed_node == buffer->head) {
@@ -110,11 +123,14 @@ sensor_data_t sbuffer_remove_last(sbuffer_t* buffer) {
     buffer->tail = removed_node->prev;
     sensor_data_t ret = removed_node->data;
     free(removed_node);
-
+    sbuffer_unlock(buffer);
     return ret;
 }
 
 void sbuffer_close(sbuffer_t* buffer) {
     assert(buffer);
+
+    sbuffer_lock(buffer);
     buffer->closed = true;
+    sbuffer_unlock(buffer);
 }
