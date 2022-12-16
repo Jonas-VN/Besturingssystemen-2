@@ -143,6 +143,16 @@ void sbuffer_close(sbuffer_t* buffer) {
     assert(buffer);
 
     ASSERT_ELSE_PERROR(pthread_mutex_lock(&buffer->mutex) == 0);
-    buffer->closed = true;
+    if (buffer->tail != NULL) {
+        // Buffer is niet leeg
+        if (buffer->tail->seenByDatamgr && buffer->tail->seenByStoragemgr) {
+            // Laatste data is wel gezien door beide threads -> OK
+            buffer->closed = true;
+        }
+    }
+    else {
+        // Buffer is wel leeg -> OK
+        buffer->closed = true;
+    }
     ASSERT_ELSE_PERROR(pthread_mutex_unlock(&buffer->mutex) == 0);
 }
