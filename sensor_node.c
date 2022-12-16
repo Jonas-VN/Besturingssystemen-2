@@ -82,7 +82,7 @@ int main(int argc, char* argv[]) {
     int i, bytes, sleep_time;
 
     LOG_OPEN();
-
+    
     if (argc != 5) {
         print_help();
         exit(EXIT_SUCCESS);

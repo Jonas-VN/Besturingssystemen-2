@@ -141,18 +141,20 @@ sensor_data_t sbuffer_remove_last(sbuffer_t* buffer, bool fromDatamgr) {
 
 void sbuffer_close(sbuffer_t* buffer) {
     assert(buffer);
-
     ASSERT_ELSE_PERROR(pthread_mutex_lock(&buffer->mutex) == 0);
-    if (buffer->tail != NULL) {
+    if (buffer->head != buffer->tail) {
         // Buffer is niet leeg
-        if (buffer->tail->seenByDatamgr && buffer->tail->seenByStoragemgr) {
-            // Laatste data is wel gezien door beide threads -> OK
+        if (!buffer->tail->seenByDatamgr && !buffer->tail->seenByStoragemgr) {
+            // Laatste data is wel niet door een thread -> OK
             buffer->closed = true;
         }
+        // else
+        // door beide gezien -> komt nooit voor door sbuffer_remove_last, deze verwijdert zodra beide gelezen hebben
+        // door 1 thread niet gezien -> mag nog niet dicht
     }
     else {
         // Buffer is wel leeg -> OK
-        buffer->closed = true;
+      buffer->closed = true;
     }
     ASSERT_ELSE_PERROR(pthread_mutex_unlock(&buffer->mutex) == 0);
 }
