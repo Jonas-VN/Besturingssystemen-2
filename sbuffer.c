@@ -29,7 +29,8 @@ struct sbuffer {
     sbuffer_node_t* tail;
     bool closed;
     pthread_mutex_t mutex;
-    pthread_cond_t data_available;
+    pthread_cond_t cond_datamgr;
+    pthread_cond_t cond_storagemgr;
 };
 
 static sbuffer_node_t* create_node(const sensor_data_t* data) {
@@ -53,7 +54,8 @@ sbuffer_t* sbuffer_create() {
     buffer->tail = NULL;
     buffer->closed = false;
     ASSERT_ELSE_PERROR(pthread_mutex_init(&buffer->mutex, NULL) == 0);
-    ASSERT_ELSE_PERROR(pthread_cond_init(&buffer->data_available, NULL) == 0);
+    ASSERT_ELSE_PERROR(pthread_cond_init(&buffer->cond_datamgr, NULL) == 0);
+    ASSERT_ELSE_PERROR(pthread_cond_init(&buffer->cond_storagemgr, NULL) == 0);
     return buffer;
 }
 
@@ -62,7 +64,8 @@ void sbuffer_destroy(sbuffer_t* buffer) {
     // make sure it's empty
     assert(buffer->head == buffer->tail);
     ASSERT_ELSE_PERROR(pthread_mutex_destroy(&buffer->mutex) == 0);
-    ASSERT_ELSE_PERROR(pthread_cond_destroy(&buffer->data_available) == 0);
+    ASSERT_ELSE_PERROR(pthread_cond_destroy(&buffer->cond_datamgr) == 0);
+    ASSERT_ELSE_PERROR(pthread_cond_destroy(&buffer->cond_storagemgr) == 0);
 
     free(buffer);
 }
@@ -78,7 +81,7 @@ bool sbuffer_is_empty(sbuffer_t* buffer) {
 bool sbuffer_is_closed(sbuffer_t* buffer) {
     // Read only
     assert(buffer);
-    pthread_mutex_lock(&buffer->mutex);
+    ASSERT_ELSE_PERROR(pthread_mutex_lock(&buffer->mutex) == 0);
     bool ret = buffer->closed;
     ASSERT_ELSE_PERROR(pthread_mutex_unlock(&buffer->mutex) == 0);
     return ret;
@@ -102,21 +105,28 @@ int sbuffer_insert_first(sbuffer_t* buffer, sensor_data_t const* data) {
     if (buffer->tail == NULL)
         buffer->tail = node;
 
-    pthread_cond_signal(&buffer->data_available);
+    // Terug data in de buffer -> datamanager wakker maken
+    printf("Datamgr wordt wakker\n");
+    ASSERT_ELSE_PERROR(pthread_cond_signal(&buffer->cond_datamgr) == 0);
     ASSERT_ELSE_PERROR(pthread_mutex_unlock(&buffer->mutex) == 0);
     return SBUFFER_SUCCESS;
 }
 
 sensor_data_t sbuffer_remove_last(sbuffer_t* buffer, bool fromDatamgr) {
     assert(buffer);
-    // assert(buffer->head != NULL);
+    ASSERT_ELSE_PERROR(pthread_mutex_lock(&buffer->mutex) == 0);
 
-    pthread_mutex_lock(&buffer->mutex);
     if (buffer->head == NULL) {
         // Is empty -> wachten tot nieuwe data
-        pthread_cond_wait(&buffer->data_available, &buffer->mutex);
+        if (fromDatamgr) {
+            printf("Van datamgr wacht\n");
+            ASSERT_ELSE_PERROR(pthread_cond_wait(&buffer->cond_datamgr, &buffer->mutex) == 0);
+        } else {
+            printf("Van storagemgr wacht\n");
+            ASSERT_ELSE_PERROR(pthread_cond_wait(&buffer->cond_storagemgr, &buffer->mutex) == 0);
+        }
     }
-    
+
     sbuffer_node_t* removed_node = buffer->tail;
     assert(removed_node != NULL);
     sensor_data_t ret = removed_node->data;
@@ -124,6 +134,9 @@ sensor_data_t sbuffer_remove_last(sbuffer_t* buffer, bool fromDatamgr) {
     // Komt van de datamgr en deze heeft het nog niet gezien -> nu wel dus
     if (fromDatamgr && !buffer->tail->seenByDatamgr) {
         buffer->tail->seenByDatamgr = true;
+        // Datamanager heeft het gezien -> storagemanager mag nu ook
+        printf("Storagemgr wordt wakker\n");
+        ASSERT_ELSE_PERROR(pthread_cond_signal(&buffer->cond_storagemgr) == 0);
     } 
     // Komt van de storagemgr en deze heeft het nog niet gezien -> nu wel dus
     else if (!fromDatamgr && !buffer->tail->seenByStoragemgr) {
