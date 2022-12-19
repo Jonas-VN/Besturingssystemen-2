@@ -29,6 +29,7 @@ struct sbuffer {
     sbuffer_node_t* tail;
     bool closed;
     pthread_mutex_t mutex;
+    pthread_cond_t data_available;
 };
 
 static sbuffer_node_t* create_node(const sensor_data_t* data) {
@@ -50,7 +51,7 @@ sbuffer_t* sbuffer_create() {
     buffer->tail = NULL;
     buffer->closed = false;
     ASSERT_ELSE_PERROR(pthread_mutex_init(&buffer->mutex, NULL) == 0);
-
+    ASSERT_ELSE_PERROR(pthread_cond_init(&buffer->data_available, NULL) == 0);
     return buffer;
 }
 
@@ -59,18 +60,10 @@ void sbuffer_destroy(sbuffer_t* buffer) {
     // make sure it's empty
     assert(buffer->head == buffer->tail);
     ASSERT_ELSE_PERROR(pthread_mutex_destroy(&buffer->mutex) == 0);
+    ASSERT_ELSE_PERROR(pthread_cond_destroy(&buffer->data_available) == 0);
+
     free(buffer);
 }
-
-// void sbuffer_lock(sbuffer_t* buffer) {
-//     assert(buffer);
-//     ASSERT_ELSE_PERROR(pthread_mutex_lock(&buffer->mutex) == 0);
-// }
-// 
-// void sbuffer_unlock(sbuffer_t* buffer) {
-//     assert(buffer);
-//     ASSERT_ELSE_PERROR(pthread_mutex_unlock(&buffer->mutex) == 0);
-// }
 
 bool sbuffer_is_empty(sbuffer_t* buffer) {
     // Read only
@@ -106,6 +99,8 @@ int sbuffer_insert_first(sbuffer_t* buffer, sensor_data_t const* data) {
     buffer->head = node;
     if (buffer->tail == NULL)
         buffer->tail = node;
+
+    pthread_cond_signal(&buffer->data_available);
     ASSERT_ELSE_PERROR(pthread_mutex_unlock(&buffer->mutex) == 0);
     return SBUFFER_SUCCESS;
 }
@@ -113,6 +108,11 @@ int sbuffer_insert_first(sbuffer_t* buffer, sensor_data_t const* data) {
 sensor_data_t sbuffer_remove_last(sbuffer_t* buffer, bool fromDatamgr) {
     assert(buffer);
     assert(buffer->head != NULL);
+
+    if (buffer->head == NULL) {
+        // Is empty -> wachten tot nieuwe data
+        pthread_cond_wait(&buffer->data_available, &buffer->mutex);
+    }
     
     sbuffer_node_t* removed_node = buffer->tail;
     assert(removed_node != NULL);
