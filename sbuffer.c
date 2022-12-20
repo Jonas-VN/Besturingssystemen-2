@@ -54,14 +54,6 @@ void sbuffer_destroy(sbuffer_t* buffer) {
     free(buffer);
 }
 
-// Wordt niet meer gebruikt nu
-bool sbuffer_is_empty(sbuffer_t* buffer) {
-    // Read only
-    assert(buffer);
-    ASSERT_ELSE_PERROR(pthread_mutex_lock(&buffer->mutex) == 0);
-    return buffer->head == NULL;
-}
-
 bool sbuffer_is_closed(sbuffer_t* buffer) {
     // Read only
     assert(buffer);
