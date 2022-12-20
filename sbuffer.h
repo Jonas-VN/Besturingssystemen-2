@@ -4,6 +4,7 @@
  * \author Mathieu Erbas
  */
 
+#include <pthread.h>
 #ifndef _GNU_SOURCE
     #define _GNU_SOURCE
 #endif
@@ -13,7 +14,22 @@
 #define SBUFFER_FAILURE -1
 #define SBUFFER_SUCCESS 0
 
-typedef struct sbuffer sbuffer_t;
+// Beide moeten in de header file gemaakt worden, anders kan de conmgr niet de cond var signallen
+typedef struct sbuffer_node {
+    struct sbuffer_node* prev;
+    sensor_data_t data;
+    bool seenByDatamgr;
+    bool seenByStoragemgr;
+} sbuffer_node_t;
+
+typedef struct sbuffer {
+    sbuffer_node_t* head;
+    sbuffer_node_t* tail;
+    bool closed;
+    pthread_mutex_t mutex;
+    pthread_cond_t cond_datamgr;
+    pthread_cond_t cond_storagemgr;
+} sbuffer_t;
 
 /**
  * Allocate and initialize a new shared buffer

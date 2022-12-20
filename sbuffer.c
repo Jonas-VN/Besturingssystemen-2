@@ -17,22 +17,6 @@
 #include <stdlib.h>
 #include <sys/types.h>
 
-typedef struct sbuffer_node {
-    struct sbuffer_node* prev;
-    sensor_data_t data;
-    bool seenByDatamgr;
-    bool seenByStoragemgr;
-} sbuffer_node_t;
-
-struct sbuffer {
-    sbuffer_node_t* head;
-    sbuffer_node_t* tail;
-    bool closed;
-    pthread_mutex_t mutex;
-    pthread_cond_t cond_datamgr;
-    pthread_cond_t cond_storagemgr;
-};
-
 static sbuffer_node_t* create_node(const sensor_data_t* data) {
     sbuffer_node_t* node = malloc(sizeof(*node));
     *node = (sbuffer_node_t){
@@ -116,62 +100,48 @@ sensor_data_t sbuffer_remove_last(sbuffer_t* buffer, bool fromDatamgr) {
     ASSERT_ELSE_PERROR(pthread_mutex_lock(&buffer->mutex) == 0);
 
     if (buffer->head == NULL) {
-        printf("Sbuffer is empty\n");
         // Is empty -> wachten tot nieuwe data
         if (fromDatamgr) {
-            printf("Datamgr wacht lege buffer\n");
             ASSERT_ELSE_PERROR(pthread_cond_wait(&buffer->cond_datamgr, &buffer->mutex) == 0);
         } else {
-            printf("Storagemgr wacht lege buffer\n");
             ASSERT_ELSE_PERROR(pthread_cond_wait(&buffer->cond_storagemgr, &buffer->mutex) == 0);
         }
     }
     // Soms is de datamgr voor de storagemgr nadat de datamgr klaar is -> opnieuw waiten.
     else if (fromDatamgr && buffer->tail->seenByDatamgr) {
-        printf("Datamgr wacht omdat al gezien\n");
         ASSERT_ELSE_PERROR(pthread_cond_wait(&buffer->cond_datamgr, &buffer->mutex) == 0);
     }
     else if (!fromDatamgr && buffer->tail->seenByStoragemgr) {
-        printf("Storagemgr wacht omdat al gezien\n");
         ASSERT_ELSE_PERROR(pthread_cond_wait(&buffer->cond_storagemgr, &buffer->mutex) == 0);
     }
 
-    if (fromDatamgr) {
-        printf("Datamgr door\n");
-    } else {
-        printf("Storagemgr door\n");            
-    }
     sbuffer_node_t* removed_node = buffer->tail;
-    assert(removed_node != NULL);
-    sensor_data_t ret = removed_node->data;
+    sensor_data_t ret;
+    // Dit is altijd waar, tenzij bij het afsluiten of bij een random mem fout ofzo
+    if (removed_node != NULL) {
+        ret = removed_node->data;
 
-    // Komt van de datamgr en deze heeft het nog niet gezien -> nu wel dus
-    if (fromDatamgr && !buffer->tail->seenByDatamgr) {
-        buffer->tail->seenByDatamgr = true;
-        // Datamanager heeft het gezien -> storagemanager mag nu ook
-        ASSERT_ELSE_PERROR(pthread_cond_signal(&buffer->cond_storagemgr) == 0);
-    } 
-    // Komt van de storagemgr en deze heeft het nog niet gezien -> nu wel dus
-    else if (!fromDatamgr && !buffer->tail->seenByStoragemgr) {
-        buffer->tail->seenByStoragemgr = true;
-    }
-    // Beide hebben het gezien -> mag verwijdert worden
-    if (buffer->tail->seenByDatamgr && buffer->tail->seenByStoragemgr) {
-        if (removed_node == buffer->head) {
-            buffer->head = NULL;
-            assert(removed_node == buffer->tail);
+        // Komt van de datamgr en deze heeft het nog niet gezien -> nu wel dus
+        if (fromDatamgr && !buffer->tail->seenByDatamgr) {
+            buffer->tail->seenByDatamgr = true;
+            // Datamanager heeft het gezien -> storagemanager mag nu ook
+            ASSERT_ELSE_PERROR(pthread_cond_signal(&buffer->cond_storagemgr) == 0);
+        } 
+        // Komt van de storagemgr en deze heeft het nog niet gezien -> nu wel dus
+        else if (!fromDatamgr && !buffer->tail->seenByStoragemgr) {
+            buffer->tail->seenByStoragemgr = true;
         }
-        buffer->tail = removed_node->prev;
-        free(removed_node);
+        // Beide hebben het gezien -> mag verwijdert worden
+        if (buffer->tail->seenByDatamgr && buffer->tail->seenByStoragemgr) {
+            if (removed_node == buffer->head) {
+                buffer->head = NULL;
+                assert(removed_node == buffer->tail);
+            }
+            buffer->tail = removed_node->prev;
+            free(removed_node);
+        }
     }
     ASSERT_ELSE_PERROR(pthread_mutex_unlock(&buffer->mutex) == 0);
-
-    if (fromDatamgr) {
-        printf("Datamgr weg\n");
-    } else {
-        printf("Storagemgr weg\n");            
-    }
-
     return ret;
 }
 
