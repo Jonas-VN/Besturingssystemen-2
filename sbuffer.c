@@ -67,8 +67,11 @@ int sbuffer_insert_first(sbuffer_t* buffer, sensor_data_t const* data) {
     // Write only
     assert(buffer && data);
     ASSERT_ELSE_PERROR(pthread_mutex_lock(&buffer->mutex) == 0);
-    if (buffer->closed)
+    
+    if (buffer->closed) {
+        ASSERT_ELSE_PERROR(pthread_mutex_unlock(&buffer->mutex) == 0);
         return SBUFFER_FAILURE;
+    }
 
     // create new node
     sbuffer_node_t* node = create_node(data);
