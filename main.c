@@ -32,7 +32,7 @@ typedef struct run_manager_args {
     bool fromDatamgr; 
 } run_manager_args_t;
 
-void* run_manager(void* _args) {
+static void* run_manager(void* _args) {
     // void pointer -> struct pointer
     run_manager_args_t *args = (run_manager_args_t *) _args;
     DBCONN* db = NULL;
