@@ -41,19 +41,8 @@ sbuffer_t* sbuffer_create();
  */
 void sbuffer_destroy(sbuffer_t* buffer);
 
-bool sbuffer_is_empty(sbuffer_t* buffer);
-
 bool sbuffer_is_closed(sbuffer_t* buffer);
 
-/*
-    Gain/release exclusive access to the buffer
-    TODO: these functions should not exist!
-        All buffer synchronization should be
-        internal to the buffer, users should not
-        be concerned with it!
-*/
-void sbuffer_lock(sbuffer_t* buffer);
-void sbuffer_unlock(sbuffer_t* buffer);
 
 /**
  * Inserts the sensor data in 'data' at the start of 'buffer' (at the 'head')
