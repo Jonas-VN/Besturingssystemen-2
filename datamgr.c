@@ -28,6 +28,11 @@
     #define SET_MAX_TEMP 25
 #endif
 
+#define BOLD "\x1B[1m"
+#define RED "\x1B[31m"
+#define RESET "\x1B[0m"
+
+
 typedef struct {
     uint16_t sensor_id;
     time_t last_modified;
@@ -76,10 +81,10 @@ void datamgr_process_reading(const sensor_data_t* data) {
     sensor_value_t running_average = sensor_running_average(obtained_sensor);
     if (obtained_sensor->count >= RUN_AVG_LENGTH) {
         if (running_average < SET_MIN_TEMP) {
-            printf("Sensor %" PRIu16 " read a temperature value (%f) lower than " TO_STRING(SET_MIN_TEMP) "\n", data->id, data->value);
+            printf(BOLD RED "Sensor %" PRIu16 " read a temperature value (%f) lower than " TO_STRING(SET_MIN_TEMP) "\n" RESET, data->id, data->value);
         }
         if (running_average > SET_MAX_TEMP) {
-            printf("Sensor %" PRIu16 " read a temperature value (%f) higher than " TO_STRING(SET_MAX_TEMP) "\n", data->id, data->value);
+            printf(BOLD RED "Sensor %" PRIu16 " read a temperature value (%f) higher than " TO_STRING(SET_MAX_TEMP) "\n" RESET, data->id, data->value);
         }
     }
 }
