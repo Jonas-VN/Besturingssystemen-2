@@ -64,53 +64,6 @@ static void* run_manager(void* _args) {
     return NULL;
 }
 
-// static void* datamgr_run(void* buffer) {
-//     datamgr_init();
-// 
-//     // datamgr loop
-//     while (true) {
-//         // sbuffer_lock(buffer);
-//         sensor_data_t data = sbuffer_remove_last(buffer, true);
-//         datamgr_process_reading(&data);
-//         // everything nice & processed
-//         if (sbuffer_is_closed(buffer)) {
-//             // buffer is both empty & closed: there will never be data again
-//             // sbuffer_unlock(buffer);
-//             break;
-//         }
-//         // give the others a chance to lock the mutex
-//         // sbuffer_unlock(buffer);
-//     }
-// 
-//     datamgr_free();
-// 
-//     return NULL;
-// }
-
-//static void* storagemgr_run(void* buffer) {
-//    DBCONN* db = storagemgr_init_connection(1);
-//    assert(db != NULL);
-//
-//    // storagemgr loop
-//    while (true) {
-//        // sbuffer_lock(buffer);
-//        sensor_data_t data = sbuffer_remove_last(buffer, false);
-//        storagemgr_insert_sensor(db, data.id, data.value, data.ts);
-//
-//        // everything nice & processed
-//        if (sbuffer_is_closed(buffer)) {
-//            // buffer is both empty & closed: there will never be data again
-//            // sbuffer_unlock(buffer);
-//            break;
-//        }
-//        // give the others a chance to lock the mutex
-//        // sbuffer_unlock(buffer);
-//    }
-//
-//    storagemgr_disconnect(db);
-//    return NULL;
-//}
-
 int main(int argc, char* argv[]) {
     if (argc != 2)
         return print_usage();
