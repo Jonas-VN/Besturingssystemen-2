@@ -59,6 +59,7 @@ static void* storagemgr_run(void* buffer) {
         // sbuffer_lock(buffer);
         sensor_data_t data = sbuffer_remove_last(buffer, false);
         storagemgr_insert_sensor(db, data.id, data.value, data.ts);
+
         // everything nice & processed
         if (sbuffer_is_closed(buffer)) {
             // buffer is both empty & closed: there will never be data again
