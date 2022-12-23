@@ -18,6 +18,22 @@
 #include <stdlib.h>
 #include <sys/types.h>
 
+typedef struct sbuffer_node {
+    struct sbuffer_node* prev;
+    sensor_data_t data;
+    bool seenByDatamgr;
+    bool seenByStoragemgr;
+} sbuffer_node_t;
+
+typedef struct sbuffer {
+    sbuffer_node_t* head;
+    sbuffer_node_t* storagemgr_tail;
+    sbuffer_node_t* datamgr_tail;
+    bool closed;
+    pthread_mutex_t mutex;
+    pthread_cond_t data_available;
+} sbuffer_t;
+
 static sbuffer_node_t* create_node(const sensor_data_t* data) {
     sbuffer_node_t* node = malloc(sizeof(*node));
     *node = (sbuffer_node_t){
@@ -153,11 +169,10 @@ sensor_data_t sbuffer_remove_last(sbuffer_t* buffer, bool fromDatamgr) {
 
 void sbuffer_close(sbuffer_t* buffer) {
     assert(buffer);
-
     ASSERT_ELSE_PERROR(pthread_mutex_lock(&buffer->mutex) == 0);
-    if (buffer->head == buffer->datamgr_tail && buffer->head == buffer->storagemgr_tail) {
-        buffer->closed = true;
-    }
-
+    
+    buffer->closed = true;
+    ASSERT_ELSE_PERROR(pthread_cond_broadcast(&buffer->data_available) == 0);
+    
     ASSERT_ELSE_PERROR(pthread_mutex_unlock(&buffer->mutex) == 0);
 }

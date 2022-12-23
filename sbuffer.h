@@ -14,22 +14,7 @@
 #define SBUFFER_FAILURE -1
 #define SBUFFER_SUCCESS 0
 
-// Beide moeten in de header file gemaakt worden, anders kan de conmgr niet de cond var signallen
-typedef struct sbuffer_node {
-    struct sbuffer_node* prev;
-    sensor_data_t data;
-    bool seenByDatamgr;
-    bool seenByStoragemgr;
-} sbuffer_node_t;
-
-typedef struct sbuffer {
-    sbuffer_node_t* head;
-    sbuffer_node_t* storagemgr_tail;
-    sbuffer_node_t* datamgr_tail;
-    bool closed;
-    pthread_mutex_t mutex;
-    pthread_cond_t data_available;
-} sbuffer_t;
+typedef struct sbuffer sbuffer_t;
 
 /**
  * Allocate and initialize a new shared buffer
