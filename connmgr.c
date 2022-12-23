@@ -55,8 +55,7 @@ void connmgr_listen(int port_number, sbuffer_t* buffer) {
             // quit the connmgr (TIMEOUT was reached)
             printf("No sensor data received after " TO_STRING(TIMEOUT) " seconds. Quitting server.\n");
             active = false;
-            ASSERT_ELSE_PERROR(pthread_cond_signal(&buffer->cond_datamgr) == 0);
-            ASSERT_ELSE_PERROR(pthread_cond_signal(&buffer->cond_storagemgr) == 0);
+            ASSERT_ELSE_PERROR(pthread_cond_broadcast(&buffer->data_available) == 0);
         } else {
             // loop over sockets
             size_t size = vector_size(sockets); // cache up front because some sockets may get added

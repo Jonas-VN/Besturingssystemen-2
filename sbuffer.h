@@ -24,11 +24,11 @@ typedef struct sbuffer_node {
 
 typedef struct sbuffer {
     sbuffer_node_t* head;
-    sbuffer_node_t* tail;
+    sbuffer_node_t* storagemgr_tail;
+    sbuffer_node_t* datamgr_tail;
     bool closed;
     pthread_mutex_t mutex;
-    pthread_cond_t cond_datamgr;
-    pthread_cond_t cond_storagemgr;
+    pthread_cond_t data_available;
 } sbuffer_t;
 
 /**
