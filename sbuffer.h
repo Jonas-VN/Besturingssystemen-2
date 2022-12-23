@@ -26,7 +26,7 @@ sbuffer_t* sbuffer_create();
  */
 void sbuffer_destroy(sbuffer_t* buffer);
 
-bool sbuffer_is_closed(sbuffer_t* buffer);
+bool sbuffer_is_closed_and_empty(sbuffer_t* buffer, bool fromDatamgr);
 
 
 /**

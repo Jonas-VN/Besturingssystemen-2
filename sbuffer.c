@@ -70,11 +70,16 @@ void sbuffer_destroy(sbuffer_t* buffer) {
     free(buffer);
 }
 
-bool sbuffer_is_closed(sbuffer_t* buffer) {
+bool sbuffer_is_closed_and_empty(sbuffer_t* buffer, bool fromDatamgr) {
     // Read only
     assert(buffer);
     ASSERT_ELSE_PERROR(pthread_mutex_lock(&buffer->mutex) == 0);
-    bool ret = buffer->closed;
+    bool ret;
+    if (fromDatamgr) {
+        ret = buffer->closed && buffer->datamgr_tail == NULL;
+    } else {
+        ret = buffer->closed && buffer->storagemgr_tail == NULL;
+    }
     ASSERT_ELSE_PERROR(pthread_mutex_unlock(&buffer->mutex) == 0);
     return ret;
 }
@@ -107,7 +112,6 @@ int sbuffer_insert_first(sbuffer_t* buffer, sensor_data_t const* data) {
         buffer->storagemgr_tail = node;
     }
     
-
     // Terug data in de buffer -> threads wakker maken
     ASSERT_ELSE_PERROR(pthread_cond_broadcast(&buffer->data_available) == 0);
     ASSERT_ELSE_PERROR(pthread_mutex_unlock(&buffer->mutex) == 0);
@@ -141,7 +145,7 @@ sensor_data_t sbuffer_remove_last(sbuffer_t* buffer, bool fromDatamgr) {
     // Nu zit de laatst mogelijke node die nog niet gezien is door de datamgr/storagemgr in removed_node
 
     sensor_data_t ret;
-    // Dit is normaal gezien altijd waar in ons geval
+    // Dit is normaal gezien altijd waar in ons geval, tenzij bij het afsluiten
     if (removed_node != NULL) {
         ret = removed_node->data;
 

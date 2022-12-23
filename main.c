@@ -50,8 +50,7 @@ static void* run_manager(void* _args) {
         } else {
             storagemgr_insert_sensor(db, data.id, data.value, data.ts);
         }
-
-        if (sbuffer_is_closed(args->buffer)) {
+        if (sbuffer_is_closed_and_empty(args->buffer, args->fromDatamgr)) {
             break;
         }
     }
